@@ -60,8 +60,9 @@ public protocol GitHubCopilotConversationServiceType {
                             activeDoc: Doc?,
                             skills: [String],
                             ignoredSkills: [String]?,
-                            references: [FileReference],
+                            references: [ConversationAttachedReference],
                             model: String?,
+                            modelProviderName: String?,
                             turns: [TurnSchema],
                             agentMode: Bool,
                             userLanguage: String?) async throws
@@ -71,8 +72,9 @@ public protocol GitHubCopilotConversationServiceType {
                     turnId: String?,
                     activeDoc: Doc?,
                     ignoredSkills: [String]?,
-                    references: [FileReference],
+                    references: [ConversationAttachedReference],
                     model: String?,
+                    modelProviderName: String?,
                     workspaceFolder: String,
                     workspaceFolders: [WorkspaceFolder]?,
                     agentMode: Bool) async throws
@@ -578,8 +580,9 @@ public final class GitHubCopilotService:
                                    activeDoc: Doc?,
                                    skills: [String],
                                    ignoredSkills: [String]?,
-                                   references: [FileReference],
+                                   references: [ConversationAttachedReference],
                                    model: String?,
+                                   modelProviderName: String?,
                                    turns: [TurnSchema],
                                    agentMode: Bool,
                                    userLanguage: String?) async throws {
@@ -604,19 +607,13 @@ public final class GitHubCopilotService:
                                                 skills: skills,
                                                 allSkills: false),
                                               textDocument: activeDoc,
-                                              references: references.map {
-                                                Reference(uri: $0.url.absoluteString,
-                                                    position: nil,
-                                                    visibleRange: nil,
-                                                    selection: nil,
-                                                    openedAt: nil,
-                                                    activeAt: nil)
-                                                },
+                                              references: references.map { Reference.from($0) },
                                               source: .panel,
                                               workspaceFolder: workspaceFolder,
                                               workspaceFolders: workspaceFolders,
                                               ignoredSkills: ignoredSkills,
                                               model: model,
+                                              modelProviderName: modelProviderName,
                                               chatMode: agentMode ? "Agent" : nil,
                                               needToolCallConfirmation: true,
                                               userLanguage: userLanguage)
@@ -636,8 +633,9 @@ public final class GitHubCopilotService:
                            turnId: String?,
                            activeDoc: Doc?,
                            ignoredSkills: [String]?,
-                           references: [FileReference],
+                           references: [ConversationAttachedReference],
                            model: String?,
+                           modelProviderName: String?,
                            workspaceFolder: String,
                            workspaceFolders: [WorkspaceFolder]? = nil,
                            agentMode: Bool) async throws {
@@ -648,15 +646,9 @@ public final class GitHubCopilotService:
                                           message: message,
                                           textDocument: activeDoc,
                                           ignoredSkills: ignoredSkills,
-                                          references: references.map {
-                                                Reference(uri: $0.url.absoluteString,
-                                                    position: nil,
-                                                    visibleRange: nil,
-                                                    selection: nil,
-                                                    openedAt: nil,
-                                                    activeAt: nil)
-                                          },
+                                          references: references.map { Reference.from($0) },
                                           model: model,
+                                          modelProviderName: modelProviderName,
                                           workspaceFolder: workspaceFolder,
                                           workspaceFolders: workspaceFolders,
                                           chatMode: agentMode ? "Agent" : nil,
@@ -910,6 +902,28 @@ public final class GitHubCopilotService:
                 let models = try? await models()
                 if let models = models, !models.isEmpty {
                     CopilotModelManager.updateLLMs(models)
+                }
+            }
+            
+            if !BYOKModelManager.hasApiKey() {
+                Logger.gitHubCopilot.info("No BYOK API keys found, fetching BYOK API keys...")
+                let byokApiKeys = try? await listBYOKApiKeys(
+                    .init(providerName: nil, modelId: nil)
+                )
+                if let byokApiKeys = byokApiKeys, !byokApiKeys.apiKeys.isEmpty {
+                    BYOKModelManager
+                        .updateApiKeys(apiKeys: byokApiKeys.apiKeys)
+                }
+            }
+            
+            if !BYOKModelManager.hasBYOKModels() {
+                Logger.gitHubCopilot.info("No BYOK models found, fetching BYOK models...")
+                let byokModels = try? await listBYOKModels(
+                    .init(providerName: nil, enableFetchUrl: nil)
+                )
+                if let byokModels = byokModels, !byokModels.models.isEmpty {
+                    BYOKModelManager
+                        .updateBYOKModels(BYOKModels: byokModels.models)
                 }
             }
             await unwatchAuthStatus()
@@ -1266,6 +1280,72 @@ public final class GitHubCopilotService:
         
         // Cache the sent configuration
         self.lastSentConfiguration = newConfiguration
+    }
+    
+    public func saveBYOKApiKey(_ params: BYOKSaveApiKeyParams) async throws -> BYOKSaveApiKeyResponse {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.BYOKSaveApiKey(params: params)
+            )
+            return response
+        } catch {
+            throw error
+        }
+    }
+    
+    public func listBYOKApiKeys(_ params: BYOKListApiKeysParams) async throws -> BYOKListApiKeysResponse {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.BYOKListApiKeys(params: params)
+            )
+            return response
+        } catch {
+            throw error
+        }
+    }
+
+    public func deleteBYOKApiKey(_ params: BYOKDeleteApiKeyParams) async throws -> BYOKDeleteApiKeyResponse {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.BYOKDeleteApiKey(params: params)
+            )
+            return response
+        } catch {
+            throw error
+        }
+    }
+    
+    public func saveBYOKModel(_ params: BYOKSaveModelParams) async throws -> BYOKSaveModelResponse {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.BYOKSaveModel(params: params)
+            )
+            return response
+        } catch {
+            throw error
+        }
+    }
+    
+    public func listBYOKModels(_ params: BYOKListModelsParams) async throws -> BYOKListModelsResponse {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.BYOKListModels(params: params)
+            )
+            return response
+        } catch {
+            throw error
+        }
+    }
+    
+    public func deleteBYOKModel(_ params: BYOKDeleteModelParams) async throws -> BYOKDeleteModelResponse {
+        do {
+            let response = try await sendRequest(
+                GitHubCopilotRequest.BYOKDeleteModel(params: params)
+            )
+            return response
+        } catch {
+            throw error
+        }
     }
 }
 

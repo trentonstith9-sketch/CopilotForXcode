@@ -21,6 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case chat
         case settings
         case mcp
+        case byok
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -50,6 +51,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return .settings
         } else if launchArgs.contains("--mcp") {
             return .mcp
+        } else if launchArgs.contains("--byok") {
+            return .byok
         } else {
             return .chat
         }
@@ -61,6 +64,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             openSettings()
         case .mcp:
             openMCPSettings()
+        case .byok:
+            openBYOKSettings()
         case .chat:
             openChat()
         }
@@ -84,7 +89,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func openMCPSettings() {
         DispatchQueue.main.async {
             activateAndOpenSettings()
-            hostAppStore.send(.setActiveTab(2))
+            hostAppStore.send(.setActiveTab(.mcp))
+        }
+    }
+    
+    private func openBYOKSettings() {
+        DispatchQueue.main.async {
+            activateAndOpenSettings()
+            hostAppStore.send(.setActiveTab(.byok))
         }
     }
     
@@ -187,7 +199,18 @@ struct CopilotForXcodeApp: App {
         ) { _ in
             DispatchQueue.main.async {
                 activateAndOpenSettings()
-                hostAppStore.send(.setActiveTab(2))
+                hostAppStore.send(.setActiveTab(.mcp))
+            }
+        }
+        
+        DistributedNotificationCenter.default().addObserver(
+            forName: .openBYOKSettingsWindowRequest,
+            object: nil,
+            queue: .main
+        ) { _ in
+            DispatchQueue.main.async {
+                activateAndOpenSettings()
+                hostAppStore.send(.setActiveTab(.byok))
             }
         }
     }

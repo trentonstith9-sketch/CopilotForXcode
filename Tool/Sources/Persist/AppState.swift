@@ -25,6 +25,13 @@ public extension JSONValue {
         }
         return nil
     }
+    
+    var numberValue: Double? {
+        if case .number(let value) = self {
+            return value
+        }
+        return nil
+    }
 
     static func convertToJSONValue<T: Codable>(_ object: T) -> JSONValue? {
         do {

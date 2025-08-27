@@ -30,6 +30,13 @@ public protocol XPCServiceProtocol {
     func signOutAllGitHubCopilotService()
     func getXPCServiceAuthStatus(withReply reply: @escaping (Data?) -> Void)
 
+    func saveBYOKApiKey(_ params: Data, withReply reply: @escaping (Data?) -> Void)
+    func listBYOKApiKeys(_ params: Data, withReply reply: @escaping (Data?) -> Void)
+    func deleteBYOKApiKey(_ params: Data, withReply reply: @escaping (Data?) -> Void)
+    func saveBYOKModel(_ params: Data, withReply reply: @escaping (Data?) -> Void)
+    func listBYOKModels(_ params: Data, withReply reply: @escaping (Data?, Error?) -> Void)
+    func deleteBYOKModel(_ params: Data, withReply reply: @escaping (Data?) -> Void)
+
     func postNotification(name: String, withReply reply: @escaping () -> Void)
     func send(endpoint: String, requestBody: Data, reply: @escaping (Data?, Error?) -> Void)
     func quit(reply: @escaping () -> Void)

@@ -10,7 +10,7 @@ enum ConversationSource: String, Codable {
     case panel, inline
 }
 
-public struct Reference: Codable, Equatable, Hashable {
+public struct FileReference: Codable, Equatable, Hashable {
     public var type: String = "file"
     public let uri: String
     public let position: Position?
@@ -18,6 +18,43 @@ public struct Reference: Codable, Equatable, Hashable {
     public let selection: SuggestionBasic.CursorRange?
     public let openedAt: String?
     public let activeAt: String?
+}
+
+public struct DirectoryReference: Codable, Equatable, Hashable {
+    public var type: String = "directory"
+    public let uri: String
+}
+
+public enum Reference: Codable, Equatable, Hashable {
+    case file(FileReference)
+    case directory(DirectoryReference)
+    
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .file(let fileRef):
+            try fileRef.encode(to: encoder)
+        case .directory(let directoryRef):
+            try directoryRef.encode(to: encoder)
+        }
+    }
+    
+    public static func from(_ ref: ConversationAttachedReference) -> Reference {
+        switch ref {
+        case .file(let fileRef):
+            return .file(
+                .init(
+                    uri: fileRef.url.absoluteString,
+                    position: nil,
+                    visibleRange: nil,
+                    selection: nil,
+                    openedAt: nil,
+                    activeAt: nil
+                )
+            )
+        case .directory(let directoryRef):
+            return .directory(.init(uri: directoryRef.url.absoluteString))
+        }
+    }
 }
 
 struct ConversationCreateParams: Codable {
@@ -32,6 +69,7 @@ struct ConversationCreateParams: Codable {
     var workspaceFolders: [WorkspaceFolder]?
     var ignoredSkills: [String]?
     var model: String?
+    var modelProviderName: String?
     var chatMode: String?
     var needToolCallConfirmation: Bool?
     var userLanguage: String?
@@ -66,7 +104,7 @@ public struct ConversationProgressReport: BaseConversationProgress {
     public let conversationId: String
     public let turnId: String
     public let reply: String?
-    public let references: [Reference]?
+    public let references: [FileReference]?
     public let steps: [ConversationProgressStep]?
     public let editAgentRounds: [AgentRound]?
 }
@@ -131,6 +169,7 @@ struct TurnCreateParams: Codable {
     var ignoredSkills: [String]?
     var references: [Reference]?
     var model: String?
+    var modelProviderName: String?
     var workspaceFolder: String?
     var workspaceFolders: [WorkspaceFolder]?
     var chatMode: String?

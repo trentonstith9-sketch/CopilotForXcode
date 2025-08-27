@@ -63,6 +63,11 @@ public struct CopilotModelCapabilitiesSupports: Codable, Equatable {
 public struct CopilotModelBilling: Codable, Equatable, Hashable {
     public let isPremium: Bool
     public let multiplier: Float
+    
+    public init(isPremium: Bool, multiplier: Float) {
+        self.isPremium = isPremium
+        self.multiplier = multiplier
+    }
 }
 
 // MARK: Conversation Agents

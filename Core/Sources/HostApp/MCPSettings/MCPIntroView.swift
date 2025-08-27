@@ -98,7 +98,7 @@ struct MCPIntroView: View {
                         }
                         .conditionalFontWeight(.semibold)
                     }
-                    .buttonStyle(.borderedProminentWhite)
+                    .buttonStyle(.bordered)
                     .help("Open MCP Runtime Log Folder")
                 }
             }

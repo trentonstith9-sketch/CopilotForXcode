@@ -21,18 +21,23 @@ public struct ConversationReference: Codable, Equatable, Hashable {
         case webpage
         case other
         // reference for turn - request
-        case fileReference(FileReference)
+        case fileReference(ConversationAttachedReference)
         // reference from turn - response
-        case reference(Reference)
+        case reference(FileReference)
     }
     
     public enum Status: String, Codable {
         case included, blocked, notfound, empty
     }
+    
+    public enum ReferenceType: String, Codable {
+        case file, directory
+    }
 
     public var uri: String
     public var status: Status?
     public var kind: Kind
+    public var referenceType: ReferenceType
     
     public var ext: String {
         return url?.pathExtension ?? ""
@@ -49,16 +54,19 @@ public struct ConversationReference: Codable, Equatable, Hashable {
     public var url: URL? {
         return URL(string: uri)
     }
+    
+    public var isDirectory: Bool { referenceType == .directory }
 
     public init(
         uri: String,
         status: Status?,
-        kind: Kind
+        kind: Kind,
+        referenceType: ReferenceType
     ) {
         self.uri = uri
         self.status = status
         self.kind = kind
-        
+        self.referenceType = referenceType
     }
 }
 

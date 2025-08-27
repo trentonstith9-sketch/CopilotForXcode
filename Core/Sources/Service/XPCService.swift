@@ -337,6 +337,148 @@ public class XPCService: NSObject, XPCServiceProtocol {
             reply(data)
         }
     }
+    
+    // MARK: - BYOK
+    public func saveBYOKApiKey(_ params: Data, withReply reply: @escaping (Data?) -> Void) {
+        let decoder = JSONDecoder()
+        var saveApiKeyParams: BYOKSaveApiKeyParams? = nil
+        do {
+            saveApiKeyParams = try decoder.decode(BYOKSaveApiKeyParams.self, from: params)
+            if saveApiKeyParams == nil {
+                return
+            }
+        } catch {
+            Logger.service.error("Failed to save BYOK API Key: \(error)")
+            return
+        }
+        
+        Task { @MainActor in
+            let service = try GitHubCopilotViewModel.shared.getGitHubCopilotAuthService()
+            let response = try await service.saveBYOKApiKey(saveApiKeyParams!)
+            let data = try? JSONEncoder().encode(response)
+            reply(data)
+        }
+    }
+    
+    public func listBYOKApiKeys(_ params: Data, withReply reply: @escaping (Data?) -> Void) {
+        let decoder = JSONDecoder()
+        var listApiKeysParams: BYOKListApiKeysParams? = nil
+        do {
+            listApiKeysParams = try decoder.decode(BYOKListApiKeysParams.self, from: params)
+            if listApiKeysParams == nil {
+                return
+            }
+        } catch {
+            Logger.service.error("Failed to list BYOK API keys: \(error)")
+            return
+        }
+        
+        Task { @MainActor in
+            let service = try GitHubCopilotViewModel.shared.getGitHubCopilotAuthService()
+            let response = try await service.listBYOKApiKeys(listApiKeysParams!)
+            if !response.apiKeys.isEmpty {
+                BYOKModelManager.updateApiKeys(apiKeys: response.apiKeys)
+            }
+            let data = try? JSONEncoder().encode(response)
+            reply(data)
+        }
+    }
+    
+    public func deleteBYOKApiKey(_ params: Data, withReply reply: @escaping (Data?) -> Void) {
+        let decoder = JSONDecoder()
+        var deleteApiKeyParams: BYOKDeleteApiKeyParams? = nil
+        do {
+            deleteApiKeyParams = try decoder.decode(BYOKDeleteApiKeyParams.self, from: params)
+            if deleteApiKeyParams == nil {
+                return
+            }
+        } catch {
+            Logger.service.error("Failed to delete BYOK API Key: \(error)")
+            return
+        }
+        
+        Task { @MainActor in
+            let service = try GitHubCopilotViewModel.shared.getGitHubCopilotAuthService()
+            let response = try await service.deleteBYOKApiKey(deleteApiKeyParams!)
+            let data = try? JSONEncoder().encode(response)
+            reply(data)
+        }
+    }
+    
+    public func saveBYOKModel(_ params: Data, withReply reply: @escaping (Data?) -> Void) {
+        let decoder = JSONDecoder()
+        var saveModelParams: BYOKSaveModelParams? = nil
+        do {
+            saveModelParams = try decoder.decode(BYOKSaveModelParams.self, from: params)
+            if saveModelParams == nil {
+                return
+            }
+        } catch {
+            Logger.service.error("Failed to save BYOK model: \(error)")
+            return
+        }
+        
+        Task { @MainActor in
+            let service = try GitHubCopilotViewModel.shared.getGitHubCopilotAuthService()
+            let response = try await service.saveBYOKModel(saveModelParams!)
+            let data = try? JSONEncoder().encode(response)
+            reply(data)
+        }
+    }
+    
+    public func listBYOKModels(_ params: Data, withReply reply: @escaping (Data?, Error?) -> Void) {
+        let decoder = JSONDecoder()
+        var listModelsParams: BYOKListModelsParams? = nil
+        do {
+            listModelsParams = try decoder.decode(BYOKListModelsParams.self, from: params)
+            if listModelsParams == nil {
+                return
+            }
+        } catch {
+            Logger.service.error("Failed to list BYOK models: \(error)")
+            return
+        }
+        
+        Task { @MainActor in
+            do {
+                let service = try GitHubCopilotViewModel.shared.getGitHubCopilotAuthService()
+                let response = try await service.listBYOKModels(listModelsParams!)
+                if !response.models.isEmpty && listModelsParams?.enableFetchUrl == true {
+                    for model in response.models {
+                        _ = try await service.saveBYOKModel(model)
+                    }
+                }
+                let fullModelResponse = try await service.listBYOKModels(BYOKListModelsParams())
+                BYOKModelManager.updateBYOKModels(BYOKModels: fullModelResponse.models)
+                let data = try? JSONEncoder().encode(response)
+                reply(data, nil)
+            } catch {
+                Logger.service.error("Failed to list BYOK models: \(error)")
+                reply(nil, NSError.from(error))
+            }
+        }
+    }
+    
+    public func deleteBYOKModel(_ params: Data, withReply reply: @escaping (Data?) -> Void) {
+        let decoder = JSONDecoder()
+        var deleteModelParams: BYOKDeleteModelParams? = nil
+        do {
+            deleteModelParams = try decoder.decode(BYOKDeleteModelParams.self, from: params)
+            if deleteModelParams == nil {
+                return
+            }
+        } catch {
+            Logger.service.error("Failed to delete BYOK model: \(error)")
+            return
+        }
+        
+        Task { @MainActor in
+            let service = try GitHubCopilotViewModel.shared.getGitHubCopilotAuthService()
+            let response = try await service.deleteBYOKModel(deleteModelParams!)
+            let data = try? JSONEncoder().encode(response)
+            reply(data)
+        }
+    }
 }
 
 struct NoAccessToAccessibilityAPIError: Error, LocalizedError {

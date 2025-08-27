@@ -86,6 +86,7 @@ private struct FileSelectionList: View {
     let fileUris: [DocumentUri]
     let reviewStatus: CodeReviewRound.Status
     @State private var isExpanded = false
+    @State private var checkboxMixedState: CheckboxMixedState = .off
     @Binding var selectedFileUris: [DocumentUri]
     @AppStorage(\.chatFontSize) private var chatFontSize
     
@@ -101,11 +102,17 @@ private struct FileSelectionList: View {
         
         WithPerceptionTracking {
             VStack(alignment: .leading, spacing: 4) {
+                // Select All checkbox for all files
+                selectedAllCheckbox
+                    .disabled(reviewStatus != .waitForConfirmation)
+                                
                 FileToggleList(
                     fileUris: visibleFileUris,
                     reviewStatus: reviewStatus,
-                    selectedFileUris: $selectedFileUris
+                    selectedFileUris: $selectedFileUris,
+                    onSelectionChange: updateMixedState
                 )
+                .padding(.leading, 16)
                 
                 if hasMoreFiles {
                     if !isExpanded {
@@ -116,13 +123,53 @@ private struct FileSelectionList: View {
                         FileToggleList(
                             fileUris: additionalFileUris,
                             reviewStatus: reviewStatus,
-                            selectedFileUris: $selectedFileUris
+                            selectedFileUris: $selectedFileUris,
+                            onSelectionChange: updateMixedState
                         )
+                        .padding(.leading, 16)
                     }
                 }
             }
         }
         .frame(alignment: .leading)
+        .onAppear {
+            updateMixedState()
+        }
+    }
+    
+    private var selectedAllCheckbox: some View {
+        let selectedCount = selectedFileUris.count
+        let totalCount = fileUris.count
+        let title = "All (\(selectedCount)/\(totalCount))"
+        
+        return MixedStateCheckbox(
+            title: title,
+            state: $checkboxMixedState
+        ) {
+            switch checkboxMixedState {
+            case .off, .mixed:
+                // Select all files
+                selectedFileUris = fileUris
+            case .on:
+                // Deselect all files
+                selectedFileUris = []
+            }
+            updateMixedState()
+        }
+    }
+    
+    private func updateMixedState() {
+        let selectedSet = Set(selectedFileUris)
+        let selectedCount = fileUris.filter { selectedSet.contains($0) }.count
+        let totalCount = fileUris.count
+        
+        if selectedCount == 0 {
+            checkboxMixedState = .off
+        } else if selectedCount == totalCount {
+            checkboxMixedState = .on
+        } else {
+            checkboxMixedState = .mixed
+        }
     }
 }
 
@@ -152,6 +199,7 @@ private struct FileToggleList: View {
     let fileUris: [DocumentUri]
     let reviewStatus: CodeReviewRound.Status
     @Binding var selectedFileUris: [DocumentUri]
+    let onSelectionChange: () -> Void
     
     var body: some View {
         ForEach(fileUris, id: \.self) { fileUri in
@@ -174,6 +222,8 @@ private struct FileToggleList: View {
                 } else {
                     selectedFileUris.removeAll { $0 == fileUri }
                 }
+                
+                onSelectionChange()
             }
         )
     }
@@ -208,6 +258,8 @@ private struct FileSelectionRow: View {
             }
             .toggleStyle(CheckboxToggleStyle())
             .disabled(!isInteractionEnabled)
+            
+            Spacer()
         }
     }
 }

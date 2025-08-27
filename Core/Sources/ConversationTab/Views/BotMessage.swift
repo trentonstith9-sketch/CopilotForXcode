@@ -253,7 +253,7 @@ struct ReferenceList: View {
                             chat.send(.referenceClicked(reference))
                         }) {
                             HStack(spacing: 8) {
-                                drawFileIcon(reference.url)
+                                drawFileIcon(reference.url, isDirectory: reference.isDirectory)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 16, height: 16)
@@ -338,7 +338,8 @@ struct BotMessage_Previews: PreviewProvider {
             references: .init(repeating: .init(
                 uri: "/Core/Sources/ConversationTab/Views/BotMessage.swift",
                 status: .included,
-                kind: .class
+                kind: .class,
+                referenceType: .file
             ), count: 2),
             followUp: ConversationFollowUp(message: "followup question", id: "id", type: "type"),
             errorMessages: ["Sorry, an error occurred while generating a response."],
@@ -360,32 +361,38 @@ struct ReferenceList_Previews: PreviewProvider {
             .init(
                 uri: "/Core/Sources/ConversationTab/Views/BotMessage.swift",
                 status: .included,
-                kind: .class
+                kind: .class,
+                referenceType: .file
             ),
             .init(
                 uri: "/Core/Sources/ConversationTab/Views",
                 status: .included,
-                kind: .struct
+                kind: .struct,
+                referenceType: .file
             ),
             .init(
                 uri: "/Core/Sources/ConversationTab/Views/BotMessage.swift",
                 status: .included,
-                kind: .function
+                kind: .function,
+                referenceType: .file
             ),
             .init(
                 uri: "/Core/Sources/ConversationTab/Views/BotMessage.swift",
                 status: .included,
-                kind: .case
+                kind: .case,
+                referenceType: .file
             ),
             .init(
                 uri: "/Core/Sources/ConversationTab/Views/BotMessage.swift",
                 status: .included,
-                kind: .extension
+                kind: .extension,
+                referenceType: .file
             ),
             .init(
                 uri: "/Core/Sources/ConversationTab/Views/BotMessage.swift",
                 status: .included,
-                kind: .webpage
+                kind: .webpage,
+                referenceType: .file
             ),
         ], chat: .init(initialState: .init(), reducer: { Chat(service: ChatService.service(for: chatTabInfo)) }))
     }

@@ -34,6 +34,12 @@ public class SourceEditor {
     /// To prevent expensive calculations in ``getContent()``.
     private let cache = Cache()
     
+    public var appElement: AXUIElement { .fromRunningApplication(runningApplication) }
+    
+    public var realtimeDocumentURL: URL? { 
+        appElement.realtimeDocumentURL
+    }
+    
     public func getLatestEvaluatedContent() -> Content {
         let selectionRange = element.selectedTextRange
         let (content, lines, selections) = cache.latest()
@@ -294,3 +300,9 @@ public extension SourceEditor {
     }
 }
 
+extension SourceEditor: Equatable {
+    public static func ==(lhs: SourceEditor, rhs: SourceEditor) -> Bool {
+        return lhs.runningApplication.processIdentifier == rhs.runningApplication.processIdentifier
+            && lhs.element == rhs.element 
+    }
+}

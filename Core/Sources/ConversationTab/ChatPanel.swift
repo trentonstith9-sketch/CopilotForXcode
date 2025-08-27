@@ -16,6 +16,7 @@ import UniformTypeIdentifiers
 import Status
 import GitHubCopilotService
 import GitHubCopilotViewModel
+import LanguageServerProtocol
 
 private let r: Double = 4
 
@@ -68,6 +69,8 @@ public struct ChatPanel: View {
     }
     
     private func onFileDrop(_ providers: [NSItemProvider]) -> Bool {
+        let fileManager = FileManager.default
+        
         for provider in providers {
             if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
                 provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier) { item, error in
@@ -81,15 +84,21 @@ public struct ChatPanel: View {
                     }()
                     
                     guard let url else { return }
+                    
+                    var isDirectory: ObjCBool = false
                     if let isValidFile = try? WorkspaceFile.isValidFile(url), isValidFile {
                         DispatchQueue.main.async {
-                            let fileReference = FileReference(url: url, isCurrentEditor: false)
-                            chat.send(.addSelectedFile(fileReference))
+                            let fileReference = ConversationFileReference(url: url, isCurrentEditor: false)
+                            chat.send(.addReference(.file(fileReference)))
                         }
                     } else if let data = try? Data(contentsOf: url),
                         ["png", "jpeg", "jpg", "bmp", "gif", "tiff", "tif", "webp"].contains(url.pathExtension.lowercased()) {
                         DispatchQueue.main.async {
                             chat.send(.addSelectedImage(ImageReference(data: data, fileUrl: url)))
+                        }
+                    } else if fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                        DispatchQueue.main.async {
+                            chat.send(.addReference(.directory(.init(url: url))))
                         }
                     }
                 }
@@ -503,7 +512,7 @@ struct ChatPanelInputArea: View {
         var focusedField: FocusState<Chat.State.Field?>.Binding
         @State var cancellable = Set<AnyCancellable>()
         @State private var isFilePickerPresented = false
-        @State private var allFiles: [FileReference]? = nil
+        @State private var allFiles: [ConversationAttachedReference]? = nil
         @State private var filteredTemplates: [ChatTemplate] = []
         @State private var filteredAgent: [ChatAgent] = []
         @State private var showingTemplates = false
@@ -554,8 +563,8 @@ struct ChatPanelInputArea: View {
                         FilePicker(
                             allFiles: $allFiles,
                             workspaceURL: chat.workspaceURL,
-                            onSubmit: { file in
-                                chat.send(.addSelectedFile(file))
+                            onSubmit: { ref in
+                                chat.send(.addReference(ref))
                             },
                             onExit: {
                                 isFilePickerPresented = false
@@ -801,13 +810,13 @@ struct ChatPanelInputArea: View {
         
         private var chatContextView: some View {
             let buttonItems: [ChatContextButtonType] = [.contextAttach, .imageAttach]
-            let currentEditorItem: [FileReference] = [chat.state.currentEditor].compactMap {
+            let currentEditorItem: [ConversationFileReference] = [chat.state.currentEditor].compactMap {
                 $0
             }
-            let selectedFileItems = chat.state.selectedFiles
+            let references = chat.state.conversationAttachedReferences
             let chatContextItems: [Any] = buttonItems.map {
                 $0 as ChatContextButtonType
-            } + currentEditorItem + selectedFileItems
+            } + currentEditorItem + references
             return FlowLayout(mode: .scrollable, items: chatContextItems, itemSpacing: 4) { item in
                 if let buttonType = item as? ChatContextButtonType {
                     if buttonType == .imageAttach {
@@ -834,59 +843,90 @@ struct ChatPanelInputArea: View {
                         .help("Add Context")
                         .cornerRadius(6)
                     }
-                } else if let select = item as? FileReference {
-                    HStack(spacing: 0) {
-                        drawFileIcon(select.url)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 16, height: 16)
-                            .foregroundColor(.primary.opacity(0.85))
-                            .padding(4)
-                            .opacity(select.isCurrentEditor && !isCurrentEditorContextEnabled ? 0.4 : 1.0)
-
-                        Text(select.url.lastPathComponent)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .foregroundColor(
-                                select.isCurrentEditor && !isCurrentEditorContextEnabled
-                                ? .secondary
-                                : .primary.opacity(0.85)
-                            )
-                            .font(.body)
-                            .opacity(select.isCurrentEditor && !isCurrentEditorContextEnabled ? 0.4 : 1.0)
-                            .help(select.getPathRelativeToHome())
-                        
-                        if select.isCurrentEditor {
-                            Toggle("", isOn: $isCurrentEditorContextEnabled)
-                                .toggleStyle(SwitchToggleStyle(tint: .blue))
-                                .controlSize(.mini)
-                                .padding(.trailing, 4)
-                                .onChange(of: isCurrentEditorContextEnabled) { newValue in
-                                    enableCurrentEditorContext = newValue
-                                }
-                        } else {
-                            Button(action: { chat.send(.removeSelectedFile(select)) }) {
-                                Image(systemName: "xmark")
-                                    .resizable()
-                                    .frame(width: 8, height: 8)
-                                    .foregroundColor(.primary.opacity(0.85))
-                                    .padding(4)
-                            }
-                            .buttonStyle(HoverButtonStyle())
-                        }
-                    }
-                    .background(
-                        Color(nsColor: .windowBackgroundColor).opacity(0.5)
-                    )
-                    .cornerRadius(select.isCurrentEditor ? 99 : r)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: select.isCurrentEditor ? 99 : r)
-                            .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                    )
-                }
+                } else if let select = item as? ConversationFileReference, select.isCurrentEditor {
+                    makeCurrentEditorView(select)
+                } else if let select = item as? ConversationAttachedReference {
+                    makeReferenceItemView(select)
+                }                
             }
             .padding(.horizontal, 8)
             .padding(.top, 8)
+        }
+        
+        @ViewBuilder
+        func makeCurrentEditorView(_ ref: ConversationFileReference) -> some View {
+            HStack(spacing: 0) {
+                makeContextFileNameView(url: ref.url, isCurrentEditor: true, selection: ref.selection)
+                
+                Toggle("", isOn: $isCurrentEditorContextEnabled)
+                    .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    .controlSize(.mini)
+                    .padding(.trailing, 4)
+                    .onChange(of: isCurrentEditorContextEnabled) { newValue in
+                        enableCurrentEditorContext = newValue
+                    }
+            }
+            .chatContextReferenceStyle(isCurrentEditor: true, r: r)
+        }
+        
+        @ViewBuilder
+        func makeReferenceItemView(_ ref: ConversationAttachedReference) -> some View {
+            HStack(spacing: 0) {
+                makeContextFileNameView(url: ref.url, isCurrentEditor: false, isDirectory: ref.isDirectory)
+                
+                Button(action: { chat.send(.removeReference(ref)) }) {
+                    Image(systemName: "xmark")
+                        .resizable()
+                        .frame(width: 8, height: 8)
+                        .foregroundColor(.primary.opacity(0.85))
+                        .padding(4)
+                }
+                .buttonStyle(HoverButtonStyle())
+            }
+            .chatContextReferenceStyle(isCurrentEditor: false, r: r)
+        }
+        
+        @ViewBuilder
+        func makeContextFileNameView(
+            url: URL, 
+            isCurrentEditor: Bool, 
+            isDirectory: Bool = false,
+            selection: LSPRange? = nil
+        ) -> some View {
+            drawFileIcon(url, isDirectory: isDirectory)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
+                .foregroundColor(.primary.opacity(0.85))
+                .padding(4)
+                .opacity(isCurrentEditor && !isCurrentEditorContextEnabled ? 0.4 : 1.0)
+            
+            HStack(spacing: 0) {
+                Text(url.lastPathComponent)
+                
+                Group {
+                    if isCurrentEditor, let selection {
+                        let startLine = selection.start.line
+                        let endLine = selection.end.line
+                        if startLine == endLine {
+                            Text(String(format: ":%d", selection.start.line + 1))
+                        } else {
+                            Text(String(format: ":%d-%d", selection.start.line + 1, selection.end.line + 1))
+                        }
+                    }
+                }
+                .foregroundColor(.secondary)
+            }
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .foregroundColor(
+                    isCurrentEditor && !isCurrentEditorContextEnabled
+                    ? .secondary
+                    : .primary.opacity(0.85)
+                )
+                .font(.body)
+                .opacity(isCurrentEditor && !isCurrentEditorContextEnabled ? 0.4 : 1.0)
+                .help(url.getPathRelativeToHome())
         }
 
         func chatTemplateCompletion(text: String) async -> [ChatTemplate] {
@@ -932,32 +972,91 @@ struct ChatPanelInputArea: View {
         }
 
         func subscribeToActiveDocumentChangeEvent() {
-            Publishers.CombineLatest(
+            var task: Task<Void, Error>?
+            var currentFocusedEditor: SourceEditor?
+            
+            Publishers.CombineLatest3(
                 XcodeInspector.shared.$latestActiveXcode,
                 XcodeInspector.shared.$activeDocumentURL
+                    .removeDuplicates(),
+                XcodeInspector.shared.$focusedEditor
                     .removeDuplicates()
-                )
-                .receive(on: DispatchQueue.main)
-                .sink { newXcode, newDocURL in
-                    // First check for realtimeWorkspaceURL if activeWorkspaceURL is nil
-                    if let realtimeURL = newXcode?.realtimeDocumentURL, newDocURL == nil {
-                        if supportedFileExtensions.contains(realtimeURL.pathExtension) {
-                            let currentEditor = FileReference(url: realtimeURL, isCurrentEditor: true)
-                            chat.send(.setCurrentEditor(currentEditor))
-                        }
-                    } else {
-                        if supportedFileExtensions.contains(newDocURL?.pathExtension ?? "") {
-                            let currentEditor = FileReference(url: newDocURL!, isCurrentEditor: true)
-                            chat.send(.setCurrentEditor(currentEditor))
+            )
+            .receive(on: DispatchQueue.main)
+            .sink { newXcode, newDocURL, newFocusedEditor in
+                var currentEditor: ConversationFileReference?
+                
+                // First check for realtimeWorkspaceURL if activeWorkspaceURL is nil
+                if let realtimeURL = newXcode?.realtimeDocumentURL, newDocURL == nil {
+                    if supportedFileExtensions.contains(realtimeURL.pathExtension) {
+                        currentEditor = ConversationFileReference(url: realtimeURL, isCurrentEditor: true)
+                    }
+                } else if let docURL = newDocURL, supportedFileExtensions.contains(newDocURL?.pathExtension ?? "") {
+                    currentEditor = ConversationFileReference(url: docURL, isCurrentEditor: true)
+                }
+                
+                if var currentEditor = currentEditor {
+                    if let selection = newFocusedEditor?.getContent().selections.first,
+                       selection.start != selection.end {
+                        currentEditor.selection = .init(start: selection.start, end: selection.end)
+                    }
+                    
+                    chat.send(.setCurrentEditor(currentEditor))
+                }
+                
+                if currentFocusedEditor != newFocusedEditor {
+                    task?.cancel()
+                    task = nil
+                    currentFocusedEditor = newFocusedEditor
+                    
+                    if let editor = currentFocusedEditor {
+                        task = Task { @MainActor in 
+                            for await _ in await editor.axNotifications.notifications()
+                                .filter({ $0.kind == .selectedTextChanged }) {
+                                handleSourceEditorSelectionChanged(editor)
+                            }
                         }
                     }
                 }
-                .store(in: &cancellable)
+            }
+            .store(in: &cancellable)
+        }
+        
+        private func handleSourceEditorSelectionChanged(_ sourceEditor: SourceEditor) {
+            guard let fileURL = sourceEditor.realtimeDocumentURL,
+                  let currentEditorURL = chat.currentEditor?.url,
+                  fileURL == currentEditorURL
+            else {
+                return
+            }
+            
+            var currentEditor: ConversationFileReference = .init(url: fileURL, isCurrentEditor: true)
+            
+            if let selection = sourceEditor.getContent().selections.first,
+               selection.start != selection.end {
+                currentEditor.selection = .init(start: selection.start, end: selection.end)
+            }
+            
+            chat.send(.setCurrentEditor(currentEditor))
         }
         
         func submitChatMessage() {
             chat.send(.sendButtonTapped(UUID().uuidString))
         }
+    }
+}
+
+extension URL {
+    func getPathRelativeToHome() -> String {
+        let filePath = self.path
+        guard !filePath.isEmpty else { return "" }
+        
+        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser.path
+        if !homeDirectory.isEmpty {
+            return filePath.replacingOccurrences(of: homeDirectory, with: "~")
+        }
+        
+        return filePath
     }
 }
 // MARK: - Previews
@@ -983,7 +1082,8 @@ struct ChatPanel_Preview: PreviewProvider {
                 .init(
                     uri: "Hi Hi Hi Hi",
                     status: .included,
-                    kind: .class
+                    kind: .class,
+                    referenceType: .file
                 ),
             ]
         ),

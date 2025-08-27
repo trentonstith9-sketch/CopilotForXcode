@@ -5,22 +5,41 @@ import SwiftUI
 import SystemUtils
 
 public struct FilePicker: View {
-    @Binding var allFiles: [FileReference]?
+    @Binding var allFiles: [ConversationAttachedReference]?
     let workspaceURL: URL?
-    var onSubmit: (_ file: FileReference) -> Void
+    var onSubmit: (_ file: ConversationAttachedReference) -> Void
     var onExit: () -> Void
     @FocusState private var isSearchBarFocused: Bool
     @State private var searchText = ""
     @State private var selectedId: Int = 0
     @State private var localMonitor: Any? = nil
-
-    private var filteredFiles: [FileReference]? {
+    
+    // Only showup direct sub directories
+    private var defaultReferencesForDisplay: [ConversationAttachedReference]? {
+        guard let allFiles else { return nil }
+        
+        let directories = allFiles
+            .filter { $0.isDirectory }
+            .filter {
+                guard case let .directory(directory) = $0 else {
+                    return false
+                }
+                
+                return directory.depth == 1
+            }
+            
+        let files = allFiles.filter { !$0.isDirectory }
+        
+        return directories + files
+    }
+    
+    private var filteredReferences: [ConversationAttachedReference]? {
         if searchText.isEmpty {
-            return allFiles
+            return defaultReferencesForDisplay
         }
-
-        return allFiles?.filter { doc in
-            (doc.fileName ?? doc.url.lastPathComponent) .localizedCaseInsensitiveContains(searchText)
+        
+        return allFiles?.filter { ref in 
+            ref.url.lastPathComponent.localizedCaseInsensitiveContains(searchText)
         }
     }
     
@@ -90,17 +109,17 @@ public struct FilePicker: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 4) {
-                            if allFiles == nil || filteredFiles?.isEmpty == true {
+                            if allFiles == nil || filteredReferences?.isEmpty == true {
                                 emptyStateView
                                     .foregroundColor(.secondary)
                                     .padding(.leading, 4)
                                     .padding(.vertical, 4)
                             } else {
-                                ForEach(Array((filteredFiles ?? []).enumerated()), id: \.element) { index, doc in
-                                    FileRowView(doc: doc, id: index, selectedId: $selectedId)
+                                ForEach(Array((filteredReferences ?? []).enumerated()), id: \.element) { index, ref in
+                                    FileRowView(ref: ref, id: index, selectedId: $selectedId)
                                         .contentShape(Rectangle())
                                         .onTapGesture {
-                                            onSubmit(doc)
+                                            onSubmit(ref)
                                             selectedId = index
                                             isSearchBarFocused = true
                                         }
@@ -108,7 +127,7 @@ public struct FilePicker: View {
                                 }
                             }
                         }
-                        .id(filteredFiles?.hashValue)
+                        .id(filteredReferences?.hashValue)
                     }
                     .frame(maxHeight: 200)
                     .padding(.horizontal, 4)
@@ -159,45 +178,52 @@ public struct FilePicker: View {
     }
 
     private func moveSelection(up: Bool, proxy: ScrollViewProxy) {
-        guard let files = filteredFiles, !files.isEmpty else { return }
+        guard let refs = filteredReferences, !refs.isEmpty else { return }
         let nextId = selectedId + (up ? -1 : 1)
-        selectedId = max(0, min(nextId, files.count - 1))
+        selectedId = max(0, min(nextId, refs.count - 1))
         proxy.scrollTo(selectedId, anchor: .bottom)
     }
 
     private func handleEnter() {
-        guard let files = filteredFiles, !files.isEmpty && selectedId < files.count else { return }
-        onSubmit(files[selectedId])
+        guard let refs = filteredReferences, !refs.isEmpty && selectedId < refs.count else {
+            return
+        }
+        
+        onSubmit(refs[selectedId])
     }
 }
 
 struct FileRowView: View {
     @State private var isHovered = false
-    let doc: FileReference
+    let ref: ConversationAttachedReference
     let id: Int
     @Binding var selectedId: Int
 
     var body: some View {
         WithPerceptionTracking {
             HStack {
-                drawFileIcon(doc.url)
+                drawFileIcon(ref.url, isDirectory: ref.isDirectory)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
                     .foregroundColor(.secondary)
                     .padding(.leading, 4)
                 
-                VStack(alignment: .leading) {
-                    Text(doc.fileName ?? doc.url.lastPathComponent)
+                HStack(spacing: 4) {
+                    Text(ref.displayName)
                         .font(.body)
                         .hoverPrimaryForeground(isHovered: selectedId == id)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    Text(doc.relativePath ?? doc.url.path)
+                        .layoutPriority(1)
+                    
+                    Text(ref.relativePath)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                        // Ensure relative path remains visible even when display name is very long
+                        .frame(minWidth: 80, alignment: .leading)
                 }
                 
                 Spacer()
@@ -209,7 +235,7 @@ struct FileRowView: View {
             .onHover(perform: { hovering in
                 isHovered = hovering
             })
-            .help(doc.relativePath ?? doc.url.path)
+            .help(ref.url.path)
         }
     }
 }

@@ -462,6 +462,79 @@ enum GitHubCopilotRequest {
             return .custom("telemetry/exception", dict, ClientRequest.NullHandler)
         }
     }
+    
+    // MARK: BYOK
+    struct BYOKSaveModel: GitHubCopilotRequestType {
+        typealias Response = BYOKSaveModelResponse
+        
+        var params: BYOKSaveModelParams
+
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("copilot/byok/saveModel", dict, ClientRequest.NullHandler)
+        }
+    }
+    
+    struct BYOKDeleteModel: GitHubCopilotRequestType {
+        typealias Response = BYOKDeleteModelResponse
+        
+        var params: BYOKDeleteModelParams
+
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("copilot/byok/deleteModel", dict, ClientRequest.NullHandler)
+        }
+    }
+    
+    struct BYOKListModels: GitHubCopilotRequestType {
+        typealias Response = BYOKListModelsResponse
+        
+        var params: BYOKListModelsParams
+
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("copilot/byok/listModels", dict, ClientRequest.NullHandler)
+        }
+    }
+    
+    struct BYOKSaveApiKey: GitHubCopilotRequestType {
+        typealias Response = BYOKSaveApiKeyResponse
+        
+        var params: BYOKSaveApiKeyParams
+
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("copilot/byok/saveApiKey", dict, ClientRequest.NullHandler)
+        }
+    }
+    
+    struct BYOKDeleteApiKey: GitHubCopilotRequestType {
+        typealias Response = BYOKDeleteApiKeyResponse
+        
+        var params: BYOKDeleteApiKeyParams
+
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("copilot/byok/deleteApiKey", dict, ClientRequest.NullHandler)
+        }
+    }
+    
+    struct BYOKListApiKeys: GitHubCopilotRequestType {
+        typealias Response = BYOKListApiKeysResponse
+        
+        var params: BYOKListApiKeysParams
+
+        var request: ClientRequest {
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("copilot/byok/listApiKeys", dict, ClientRequest.NullHandler)
+        }
+    }
 }
 
 // MARK: Notifications

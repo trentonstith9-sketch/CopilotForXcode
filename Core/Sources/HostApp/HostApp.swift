@@ -7,18 +7,50 @@ extension KeyboardShortcuts.Name {
     static let showHideWidget = Self("ShowHideWidget")
 }
 
+public enum TabIndex: Int, CaseIterable {
+    case general = 0
+    case advanced = 1
+    case mcp = 2
+    case byok = 3
+    
+    var title: String {
+        switch self {
+        case .general: return "General"
+        case .advanced: return "Advanced"
+        case .mcp: return "MCP"
+        case .byok: return "Models"
+        }
+    }
+    
+    var image: String {
+        switch self {
+        case .general: return "CopilotLogo"
+        case .advanced: return "gearshape.2.fill"
+        case .mcp: return "wrench.and.screwdriver.fill"
+        case .byok: return "cube"
+        }
+    }
+    
+    var isSystemImage: Bool {
+        switch self {
+        case .general: return false
+        default: return true
+        }
+    }
+}
+
 @Reducer
 public struct HostApp {
     @ObservableState
     public struct State: Equatable {
         var general = General.State()
-        public var activeTabIndex: Int = 0
+        public var activeTabIndex: TabIndex = .general
     }
 
     public enum Action: Equatable {
         case appear
         case general(General.Action)
-        case setActiveTab(Int)
+        case setActiveTab(TabIndex)
     }
 
     @Dependency(\.toast) var toast

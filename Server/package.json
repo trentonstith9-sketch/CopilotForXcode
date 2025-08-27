@@ -7,7 +7,7 @@
     "build": "webpack"
   },
   "dependencies": {
-    "@github/copilot-language-server": "^1.355.0",
+    "@github/copilot-language-server": "^1.362.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "monaco-editor": "0.52.2"

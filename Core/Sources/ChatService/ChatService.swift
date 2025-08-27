@@ -21,7 +21,19 @@ import SuggestionBasic
 
 public protocol ChatServiceType {
     var memory: ContextAwareAutoManagedChatMemory { get set }
-    func send(_ id: String, content: String, contentImages: [ChatCompletionContentPartImage], contentImageReferences: [ImageReference], skillSet: [ConversationSkill], references: [FileReference], model: String?, agentMode: Bool, userLanguage: String?, turnId: String?) async throws
+    func send(
+        _ id: String,
+        content: String,
+        contentImages: [ChatCompletionContentPartImage],
+        contentImageReferences: [ImageReference],
+        skillSet: [ConversationSkill],
+        references: [ConversationAttachedReference],
+        model: String?,
+        modelProviderName: String?,
+        agentMode: Bool,
+        userLanguage: String?,
+        turnId: String?
+    ) async throws
     func stopReceivingMessage() async
     func upvote(_ id: String, _ rating: ConversationRating) async
     func downvote(_ id: String, _ rating: ConversationRating) async
@@ -333,8 +345,9 @@ public final class ChatService: ChatServiceType, ObservableObject {
         contentImages: Array<ChatCompletionContentPartImage> = [],
         contentImageReferences: Array<ImageReference> = [],
         skillSet: Array<ConversationSkill>,
-        references: Array<FileReference>,
+        references: [ConversationAttachedReference],
         model: String? = nil,
+        modelProviderName: String? = nil,
         agentMode: Bool = false,
         userLanguage: String? = nil,
         turnId: String? = nil
@@ -439,6 +452,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
             activeDoc: activeDoc,
             references: references,
             model: model,
+            modelProviderName: modelProviderName,
             agentMode: agentMode,
             userLanguage: userLanguage,
             turnId: currentTurnId,
@@ -455,8 +469,9 @@ public final class ChatService: ChatServiceType, ObservableObject {
         content: String,
         contentImages: [ChatCompletionContentPartImage] = [],
         activeDoc: Doc?,
-        references: [FileReference],
+        references: [ConversationAttachedReference],
         model: String? = nil,
+        modelProviderName: String? = nil,
         agentMode: Bool = false,
         userLanguage: String? = nil,
         turnId: String? = nil,
@@ -481,6 +496,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
             ignoredSkills: ignoredSkills,
             references: references,
             model: model,
+            modelProviderName: modelProviderName,
             agentMode: agentMode,
             userLanguage: userLanguage,
             turnId: turnId
@@ -527,7 +543,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
         deleteChatMessageFromStorage(id)
     }
 
-    public func resendMessage(id: String, model: String? = nil) async throws {
+    public func resendMessage(id: String, model: String? = nil, modelProviderName: String? = nil) async throws {
         if let _ = (await memory.history).first(where: { $0.id == id }),
            let lastUserRequest
         {
@@ -540,6 +556,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
                 skillSet: skillSet,
                 references: lastUserRequest.references ?? [],
                 model: model != nil ? model : lastUserRequest.model,
+                modelProviderName: modelProviderName != nil ? modelProviderName : lastUserRequest.modelProviderName,
                 agentMode: lastUserRequest.agentMode,
                 userLanguage: lastUserRequest.userLanguage,
                 turnId: id
@@ -1050,21 +1067,35 @@ func replaceFirstWord(in content: String, from oldWord: String, to newWord: Stri
     return content
 }
 
-extension Array where Element == Reference {
+extension Array where Element == FileReference {
     func toConversationReferences() -> [ConversationReference] {
         return self.map {
-            .init(uri: $0.uri, status: .included, kind: .reference($0))
+            .init(uri: $0.uri, status: .included, kind: .reference($0), referenceType: .file)
         }
     }
 }
 
-extension Array where Element == FileReference {
+extension Array where Element == ConversationAttachedReference {
     func toConversationReferences() -> [ConversationReference] {
         return self.map {
-            .init(uri: $0.url.path, status: .included, kind: .fileReference($0))
+            switch $0 {
+            case .file(let fileRef): 
+                    .init(
+                        uri: fileRef.url.path,
+                        status: .included,
+                        kind: .fileReference($0),
+                        referenceType: .file)
+            case .directory(let directoryRef): 
+                    .init(
+                        uri: directoryRef.url.path,
+                        status: .included,
+                        kind: .fileReference($0),
+                        referenceType: .directory)
+            }
         }
     }
 }
+
 extension [ChatMessage] {
     // transfer chat messages to turns
     // used to restore chat history for CLS

@@ -187,6 +187,17 @@ extension View {
         // semibold -> 600
         font(.system(size: 13, weight: .semibold))
     }
+    
+    func chatContextReferenceStyle(isCurrentEditor: Bool, r: Double) -> some View {
+        background(
+            Color(nsColor: .windowBackgroundColor).opacity(0.5)
+        )
+        .cornerRadius(isCurrentEditor ? 99 : r)
+        .overlay(
+            RoundedRectangle(cornerRadius: isCurrentEditor ? 99 : r)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+        )
+    }
 }
 
 // MARK: - Code Review Background Styles

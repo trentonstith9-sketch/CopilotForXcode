@@ -54,6 +54,7 @@ public final class GitHubCopilotConversationService: ConversationServiceType {
                                                     ignoredSkills: request.ignoredSkills,
                                                     references: request.references ?? [],
                                                     model: request.model,
+                                                    modelProviderName: request.modelProviderName,
                                                     turns: request.turns,
                                                     agentMode: request.agentMode,
                                                     userLanguage: request.userLanguage)
@@ -72,6 +73,7 @@ public final class GitHubCopilotConversationService: ConversationServiceType {
                                             ignoredSkills: request.ignoredSkills,
                                             references: request.references ?? [],
                                             model: request.model,
+                                            modelProviderName: request.modelProviderName,
                                             workspaceFolder: workspace.projectURL.absoluteString,
                                             workspaceFolders: getWorkspaceFolders(workspace: workspace),
                                             agentMode: request.agentMode)

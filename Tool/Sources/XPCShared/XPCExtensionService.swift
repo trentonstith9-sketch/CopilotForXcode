@@ -403,8 +403,8 @@ extension XPCExtensionService {
                 }
 
                 do {
-                    let tools = try JSONDecoder().decode(FeatureFlags.self, from: data)
-                    continuation.resume(tools)
+                    let featureFlags = try JSONDecoder().decode(FeatureFlags.self, from: data)
+                    continuation.resume(featureFlags)
                 } catch {
                     continuation.reject(error)
                 }
@@ -435,6 +435,162 @@ extension XPCExtensionService {
                 } catch {
                     continuation.reject(error)
                 }
+            }
+        }
+    }
+    
+    // MARK: BYOK
+    @XPCServiceActor
+    public func saveBYOKApiKey(_ params: BYOKSaveApiKeyParams) async throws -> BYOKSaveApiKeyResponse? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let params = try JSONEncoder().encode(params)
+                service.saveBYOKApiKey(params) { data in
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode(BYOKSaveApiKeyResponse.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
+            } catch {
+                continuation.reject(error)
+            }
+        }
+    }
+    
+    @XPCServiceActor
+    public func listBYOKApiKey(_ params: BYOKListApiKeysParams) async throws -> BYOKListApiKeysResponse? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let params = try JSONEncoder().encode(params)
+                service.listBYOKApiKeys(params) { data in
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode(BYOKListApiKeysResponse.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
+            } catch {
+                continuation.reject(error)
+            }
+        }
+    }
+    
+    @XPCServiceActor
+    public func deleteBYOKApiKey(_ params: BYOKDeleteApiKeyParams) async throws -> BYOKDeleteApiKeyResponse? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let params = try JSONEncoder().encode(params)
+                service.deleteBYOKApiKey(params) { data in
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode(BYOKDeleteApiKeyResponse.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
+            } catch {
+                continuation.reject(error)
+            }
+        }
+    }
+    
+    @XPCServiceActor
+    public func saveBYOKModel(_ params: BYOKSaveModelParams) async throws -> BYOKSaveModelResponse? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let params = try JSONEncoder().encode(params)
+                service.saveBYOKModel(params) { data in
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode(BYOKSaveModelResponse.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
+            } catch {
+                continuation.reject(error)
+            }
+        }
+    }
+    
+    @XPCServiceActor
+    public func listBYOKModels(_ params: BYOKListModelsParams) async throws -> BYOKListModelsResponse? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let params = try JSONEncoder().encode(params)
+                service.listBYOKModels(params) { data, error in
+                    if let error {
+                        continuation.reject(error)
+                        return
+                    }
+
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode(BYOKListModelsResponse.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
+            } catch {
+                continuation.reject(error)
+            }
+        }
+    }
+    
+    @XPCServiceActor
+    public func deleteBYOKModel(_ params: BYOKDeleteModelParams) async throws -> BYOKDeleteModelResponse? {
+        return try await withXPCServiceConnected {
+            service, continuation in
+            do {
+                let params = try JSONEncoder().encode(params)
+                service.deleteBYOKModel(params) { data in
+                    guard let data else {
+                        continuation.resume(nil)
+                        return
+                    }
+
+                    do {
+                        let response = try JSONDecoder().decode(BYOKDeleteModelResponse.self, from: data)
+                        continuation.resume(response)
+                    } catch {
+                        continuation.reject(error)
+                    }
+                }
+            } catch {
+                continuation.reject(error)
             }
         }
     }
