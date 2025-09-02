@@ -140,6 +140,7 @@ let package = Package(
             name: "SuggestionBasic",
             dependencies: [
                 "LanguageClient",
+                "AXExtension",
                 .product(name: "Parsing", package: "swift-parsing"),
                 .product(name: "CodableWrappers", package: "CodableWrappers"),
             ]

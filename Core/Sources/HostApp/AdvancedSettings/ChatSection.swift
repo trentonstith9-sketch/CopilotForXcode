@@ -6,25 +6,37 @@ import XcodeInspector
 
 struct ChatSection: View {
     @AppStorage(\.autoAttachChatToXcode) var autoAttachChatToXcode
-    
+
     var body: some View {
         SettingsSection(title: "Chat Settings") {
             // Auto Attach toggle
             SettingsToggle(
-                title: "Auto-attach Chat Window to Xcode", 
+                title: "Auto-attach Chat Window to Xcode",
                 isOn: $autoAttachChatToXcode
             )
-            
+
             Divider()
-            
+
             // Response language picker
             ResponseLanguageSetting()
                 .padding(SettingsToggle.defaultPadding)
-            
+
             Divider()
-            
-            // Custom instructions
-            CustomInstructionSetting()
+
+            // Copilot instructions - .github/copilot-instructions.md
+            CopilotInstructionSetting()
+                .padding(SettingsToggle.defaultPadding)
+
+            Divider()
+
+            // Custom Instructions - .github/instructions/*.instructions.md
+            PromptFileSetting(promptType: .instructions)
+                .padding(SettingsToggle.defaultPadding)
+
+            Divider()
+
+            // Custom Prompts - .github/prompts/*.prompt.md
+            PromptFileSetting(promptType: .prompt)
                 .padding(SettingsToggle.defaultPadding)
         }
     }
@@ -50,14 +62,14 @@ struct ResponseLanguageSetting: View {
         "tr": "Turkish",
         "pl": "Polish",
         "cs": "Czech",
-        "hu": "Hungarian"
+        "hu": "Hungarian",
     ]
-    
+
     var selectedLanguage: String {
         if chatResponseLocale == "" {
             return "English"
         }
-        
+
         return localeLanguageMap[chatResponseLocale] ?? "English"
     }
 
@@ -73,7 +85,7 @@ struct ResponseLanguageSetting: View {
                 VStack(alignment: .leading) {
                     Text("Response Language")
                         .font(.body)
-                    Text("This change applies only to new chat sessions. Existing ones won’t be impacted.")
+                    Text("This change applies only to new chat sessions. Existing ones won't be impacted.")
                         .font(.footnote)
                 }
 
@@ -90,7 +102,7 @@ struct ResponseLanguageSetting: View {
     }
 }
 
-struct CustomInstructionSetting: View {
+struct CopilotInstructionSetting: View {
     @State var isGlobalInstructionsViewOpen = false
     @Environment(\.toast) var toast
 
@@ -98,9 +110,9 @@ struct CustomInstructionSetting: View {
         WithPerceptionTracking {
             HStack {
                 VStack(alignment: .leading) {
-                    Text("Custom Instructions")
+                    Text("Copilot Instructions")
                         .font(.body)
-                    Text("Configure custom instructions for GitHub Copilot to follow during chat sessions.")
+                    Text("Configure `.github/copilot-instructions.md` to apply to all chat requests.")
                         .font(.footnote)
                 }
 
@@ -122,38 +134,86 @@ struct CustomInstructionSetting: View {
 
     func openCustomInstructions() {
         Task {
-            let service = try? getService()
-            let inspectorData = try? await service?.getXcodeInspectorData()
-            var currentWorkspace: URL? = nil
-            if let url = inspectorData?.realtimeActiveWorkspaceURL, let workspaceURL = URL(string: url), workspaceURL.path != "/" {
-                currentWorkspace = workspaceURL
-            } else if let url = inspectorData?.latestNonRootWorkspaceURL {
-                currentWorkspace = URL(string: url)
+            guard let projectURL = await getCurrentProjectURL() else {
+                toast("No active workspace found", .error)
+                return
             }
 
-            // Open custom instructions for the current workspace
-            if let workspaceURL = currentWorkspace, let projectURL = WorkspaceXcodeWindowInspector.extractProjectURL(workspaceURL: workspaceURL, documentURL: nil)  {
+            let configFile = projectURL.appendingPathComponent(".github/copilot-instructions.md")
 
-                let configFile = projectURL.appendingPathComponent(".github/copilot-instructions.md")
+            // If the file doesn't exist, create one with a proper structure
+            if !FileManager.default.fileExists(atPath: configFile.path) {
+                do {
+                    // Create directory if it doesn't exist using reusable helper
+                    let gitHubDir = projectURL.appendingPathComponent(".github")
+                    try ensureDirectoryExists(at: gitHubDir)
 
-                // If the file doesn't exist, create one with a proper structure
-                if !FileManager.default.fileExists(atPath: configFile.path) {
-                    do {
-                        // Create directory if it doesn't exist
-                        try FileManager.default.createDirectory(
-                            at: projectURL.appendingPathComponent(".github"),
-                            withIntermediateDirectories: true
+                    // Create empty file
+                    try "".write(to: configFile, atomically: true, encoding: .utf8)
+                } catch {
+                    toast("Failed to create config file .github/copilot-instructions.md: \(error)", .error)
+                }
+            }
+
+            if FileManager.default.fileExists(atPath: configFile.path) {
+                NSWorkspace.shared.open(configFile)
+            }
+        }
+    }
+}
+
+struct PromptFileSetting: View {
+    let promptType: PromptType
+    @State private var isCreateSheetPresented = false
+    @Environment(\.toast) var toast
+
+    var body: some View {
+        WithPerceptionTracking {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(promptType.settingTitle)
+                        .font(.body)
+                    Text(
+                        (try? AttributedString(markdown: promptType.description)) ?? AttributedString(
+                            promptType.description
                         )
-                        // Create empty file
-                        try "".write(to: configFile, atomically: true, encoding: .utf8)
-                    } catch {
-                        toast("Failed to create config file .github/copilot-instructions.md: \(error)", .error)
-                    }
+                    )
+                    .font(.footnote)
                 }
 
-                if FileManager.default.fileExists(atPath: configFile.path) {
-                    NSWorkspace.shared.open(configFile)
+                Spacer()
+
+                Button("Create") {
+                    isCreateSheetPresented = true
                 }
+
+                Button("Open \(promptType.directoryName.capitalized) Folder") {
+                    openDirectory()
+                }
+            }
+            .sheet(isPresented: $isCreateSheetPresented) {
+                CreateCustomCopilotFileView(
+                    isOpen: $isCreateSheetPresented,
+                    promptType: promptType
+                )
+            }
+        }
+    }
+
+    private func openDirectory() {
+        Task {
+            guard let projectURL = await getCurrentProjectURL() else {
+                toast("No active workspace found", .error)
+                return
+            }
+
+            let directory = promptType.getDirectoryPath(projectURL: projectURL)
+
+            do {
+                try ensureDirectoryExists(at: directory)
+                NSWorkspace.shared.open(directory)
+            } catch {
+                toast("Failed to create \(promptType.directoryName) directory: \(error)", .error)
             }
         }
     }

@@ -401,43 +401,12 @@ public struct CodeReviewLocationStrategy {
             for: originalLineNumber,
             originalLines: originalLines,
             currentLines: currentLines
-        ) // 1-based
-        // Calculate the character position for the start of the target line
-        var characterPosition = 0
-        for i in 0 ..< currentLineNumber {
-            characterPosition += currentLines[i].count + 1 // +1 for newline character
+        ) // 0-based
+        
+        guard let rect = LocationStrategyHelper.getLineFrame(currentLineNumber, in: editor, with: currentLines) else {
+            return (nil, nil)
         }
-
-        var range = CFRange(location: characterPosition, length: currentLines[currentLineNumber].count)
-        let rangeValue = AXValueCreate(AXValueType.cfRange, &range)
-
-        var boundsValue: CFTypeRef?
-        let result = AXUIElementCopyParameterizedAttributeValue(
-            editor,
-            kAXBoundsForRangeParameterizedAttribute as CFString,
-            rangeValue!,
-            &boundsValue
-        )
-
-        if result == .success,
-           let bounds = boundsValue
-        {
-            var rect = CGRect.zero
-            let success = AXValueGetValue(bounds as! AXValue, AXValueType.cgRect, &rect)
-
-            if success == true {
-                return (
-                    currentLineNumber,
-                    CGRect(
-                        x: rect.minX,
-                        y: rect.minY,
-                        width: rect.width,
-                        height: rect.height
-                    )
-                )
-            }
-        }
-
-        return (nil, nil)
+        
+        return (currentLineNumber, rect)
     }
 }

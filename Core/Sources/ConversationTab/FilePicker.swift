@@ -206,7 +206,7 @@ struct FileRowView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
-                    .foregroundColor(.secondary)
+                    .hoverSecondaryForeground(isHovered: selectedId == id)
                     .padding(.leading, 4)
                 
                 HStack(spacing: 4) {
@@ -219,7 +219,7 @@ struct FileRowView: View {
                     
                     Text(ref.relativePath)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .hoverSecondaryForeground(isHovered: selectedId == id)
                         .lineLimit(1)
                         .truncationMode(.middle)
                         // Ensure relative path remains visible even when display name is very long

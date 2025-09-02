@@ -371,9 +371,13 @@ enum GitHubCopilotRequest {
 
     struct GetTemplates: GitHubCopilotRequestType {
         typealias Response = Array<ChatTemplate>
+        
+        var params: ConversationTemplatesParams
 
         var request: ClientRequest {
-            .custom("conversation/templates", .hash([:]), ClientRequest.NullHandler)
+            let data = (try? JSONEncoder().encode(params)) ?? Data()
+            let dict = (try? JSONDecoder().decode(JSONValue.self, from: data)) ?? .hash([:])
+            return .custom("conversation/templates", dict, ClientRequest.NullHandler)
         }
     }
 

@@ -81,7 +81,7 @@ public protocol GitHubCopilotConversationServiceType {
     func rateConversation(turnId: String, rating: ConversationRating) async throws
     func copyCode(turnId: String, codeBlockIndex: Int, copyType: CopyKind, copiedCharacters: Int, totalCharacters: Int, copiedText: String) async throws
     func cancelProgress(token: String) async
-    func templates() async throws -> [ChatTemplate]
+    func templates(workspaceFolders: [WorkspaceFolder]?) async throws -> [ChatTemplate]
     func models() async throws -> [CopilotModel]
     func registerTools(tools: [LanguageModelToolInformation]) async throws
 }
@@ -662,10 +662,11 @@ public final class GitHubCopilotService:
     }
 
     @GitHubCopilotSuggestionActor
-    public func templates() async throws -> [ChatTemplate] {
+    public func templates(workspaceFolders: [WorkspaceFolder]? = nil) async throws -> [ChatTemplate] {
         do {
+            let params = ConversationTemplatesParams(workspaceFolders: workspaceFolders)
             let response = try await sendRequest(
-                GitHubCopilotRequest.GetTemplates()
+                GitHubCopilotRequest.GetTemplates(params: params)
             )
             return response
         } catch {

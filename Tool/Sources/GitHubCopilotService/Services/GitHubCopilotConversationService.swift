@@ -97,7 +97,7 @@ public final class GitHubCopilotConversationService: ConversationServiceType {
 
     public func templates(workspace: WorkspaceInfo) async throws -> [ChatTemplate]? {
         guard let service = await serviceLocator.getService(from: workspace) else { return nil }
-        return try await service.templates()
+        return try await service.templates(workspaceFolders: getWorkspaceFolders(workspace: workspace))
     }
 
     public func models(workspace: WorkspaceInfo) async throws -> [CopilotModel]? {

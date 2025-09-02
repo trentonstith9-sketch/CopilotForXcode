@@ -25,6 +25,14 @@ extension AXUIElement {
         return WorkspaceXcodeWindowInspector.extractDocumentURL(windowElement: window)
     }
     
+    var realtimeWorkspaceURL: URL? {
+        guard let window = self.focusedWindow,
+              window.identifier == "Xcode.WorkspaceWindow"
+        else { return nil }
+        
+        return WorkspaceXcodeWindowInspector.extractWorkspaceURL(windowElement: window)
+    }
+    
     static func fromRunningApplication(_ runningApplication: NSRunningApplication) -> AXUIElement {
         let app = AXUIElementCreateApplication(runningApplication.processIdentifier)
         app.setMessagingTimeout(2)

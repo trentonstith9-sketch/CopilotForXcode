@@ -32,17 +32,7 @@ struct ModelSheet: View {
                     Spacer()
                     Text("\(provider.title)").font(.headline)
                     Spacer()
-                    if #available(macOS 14.0, *) {
-                        HelpLink(action: openHelpLink).controlSize(.small)
-                    } else {
-                        Button(action: openHelpLink) {
-                            Image(systemName: "questionmark")
-                        }
-                        .controlSize(.small)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.05), radius: 0, x: 0, y: 0)
-                        .shadow(color: .black.opacity(0.3), radius: 1.25, x: 0, y: 0.5)
-                    }
+                    AdaptiveHelpLink(action: openHelpLink)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {

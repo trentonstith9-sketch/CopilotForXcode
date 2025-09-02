@@ -16,6 +16,7 @@ enum Style {
     static let trafficLightButtonSize: Double = 12
     static let codeReviewPanelWidth: Double = 550
     static let codeReviewPanelHeight: Double = 450
+    static let fixPanelToAnnotationSpacing: Double = 8
 }
 
 extension Color {

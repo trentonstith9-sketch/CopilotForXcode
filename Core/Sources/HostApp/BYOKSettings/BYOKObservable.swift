@@ -3,6 +3,7 @@ import GitHubCopilotService
 import Logger
 import SwiftUI
 import XPCShared
+import SystemUtils
 
 actor BYOKServiceActor {
     private let service: XPCExtensionService
@@ -176,7 +177,13 @@ extension BYOKModelManagerObservable {
     }
 }
 
-public let BYOKHelpLink = "https://github.com/github/CopilotForXcode/blob/main/BYOK.md"
+public var BYOKHelpLink: String {
+    var editorPluginVersion = SystemUtils.editorPluginVersionString
+    if editorPluginVersion == "0.0.0" {
+        editorPluginVersion = "main"
+    }
+    return "https://github.com/github/CopilotForXcode/blob/\(editorPluginVersion)/Docs/BYOK.md"
+}
 
 enum BYOKSheetType: Identifiable {
     case apiKey(BYOKProviderName)

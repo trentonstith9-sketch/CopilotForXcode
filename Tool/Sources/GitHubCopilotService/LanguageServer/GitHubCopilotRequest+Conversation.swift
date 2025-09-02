@@ -38,6 +38,31 @@ public enum Reference: Codable, Equatable, Hashable {
         }
     }
     
+    private enum CodingKeys: String, CodingKey {
+        case type
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        
+        switch type {
+        case "file":
+            let fileRef = try FileReference(from: decoder)
+            self = .file(fileRef)
+        case "directory":
+            let directoryRef = try DirectoryReference(from: decoder)
+            self = .directory(directoryRef)
+        default:
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Unknown reference type: \(type)"
+                )
+            )
+        }
+    }
+    
     public static func from(_ ref: ConversationAttachedReference) -> Reference {
         switch ref {
         case .file(let fileRef):
@@ -157,6 +182,11 @@ struct ConversationRatingParams: Codable {
     var rating: ConversationRating
     var doc: Doc?
     var source: ConversationSource?
+}
+
+// MARK: Conversation templates
+struct ConversationTemplatesParams: Codable {
+    var workspaceFolders: [WorkspaceFolder]?
 }
 
 // MARK: Conversation turn

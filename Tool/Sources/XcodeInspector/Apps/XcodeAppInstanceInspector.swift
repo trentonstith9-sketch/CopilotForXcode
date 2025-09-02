@@ -81,11 +81,7 @@ public final class XcodeAppInstanceInspector: AppInstanceInspector {
     public var realtimeDocumentURL: URL? { appElement.realtimeDocumentURL }
 
     public var realtimeWorkspaceURL: URL? {
-        guard let window = appElement.focusedWindow,
-              window.identifier == "Xcode.WorkspaceWindow"
-        else { return nil }
-
-        return WorkspaceXcodeWindowInspector.extractWorkspaceURL(windowElement: window)
+        appElement.realtimeWorkspaceURL
     }
 
     public var realtimeProjectURL: URL? {

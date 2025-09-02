@@ -145,6 +145,7 @@ struct ChatHistorySearchBarView: View {
 struct ChatHistoryItemView: View {
     let store: StoreOf<ChatPanelFeature>
     let previewInfo: ChatTabPreviewInfo
+    @Environment(\.colorScheme) var colorScheme
     @Binding var isChatHistoryVisible: Bool
     @State private var isHovered = false
     
@@ -219,7 +220,10 @@ struct ChatHistoryItemView: View {
             })
             .hoverRadiusBackground(
                 isHovered: isHovered,
-                hoverColor: Color(nsColor: .textBackgroundColor.withAlphaComponent(0.55)),
+                hoverColor: Color(
+                    nsColor: .controlColor
+                        .withAlphaComponent(colorScheme == .dark ? 0.1 : 0.55)
+                ),
                 cornerRadius: 4,
                 showBorder: isHovered,
                 borderColor: Color(nsColor: .separatorColor)

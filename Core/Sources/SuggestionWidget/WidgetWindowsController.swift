@@ -61,6 +61,10 @@ actor WidgetWindowsController: NSObject {
         }.store(in: &cancellable)
 
         xcodeInspector.$focusedEditor.sink { [weak self] editor in
+            Task { @MainActor [weak self] in 
+                self?.store.send(.fixErrorPanel(.onFocusedEditorChanged(editor)))
+            }
+            
             guard let editor else { return }
             Task { [weak self] in await self?.observe(toEditor: editor) }
         }.store(in: &cancellable)
@@ -89,6 +93,9 @@ actor WidgetWindowsController: NSObject {
         
         // Observe state change of code review
         setupCodeReviewPanelObservers()
+        
+        // Observe state change of fix error
+        setupFixErrorPanelObservers()
     }
     
     private func setupCodeReviewPanelObservers() {
@@ -132,6 +139,8 @@ private extension WidgetWindowsController {
                 await hideSuggestionPanelWindow()
             }
             await adjustChatPanelWindowLevel()
+            
+            await updateFixErrorPanelWindowLocation()
         }
         guard currentApplicationProcessIdentifier != app.processIdentifier else { return }
         currentApplicationProcessIdentifier = app.processIdentifier
@@ -231,6 +240,8 @@ private extension WidgetWindowsController {
                     updateWindowLocation(animated: false, immediately: false)
                     updateWindowOpacity(immediately: false)
                     await updateCodeReviewWindowLocation(.onSourceEditorNotification(notification))
+                    
+                    await handleFixErrorEditorNotification(notification: notification)
                 }
             } else {
                 for await notification in merge(selectionRangeChange, scroll, valueChange) {
@@ -245,6 +256,8 @@ private extension WidgetWindowsController {
                     updateWindowLocation(animated: false, immediately: false)
                     updateWindowOpacity(immediately: false)
                     await updateCodeReviewWindowLocation(.onSourceEditorNotification(notification))
+                    
+                    await handleFixErrorEditorNotification(notification: notification)
                 }
             }
         }
@@ -1015,6 +1028,39 @@ public final class WidgetWindows {
     }()
     
     @MainActor
+    lazy var fixErrorPanelWindow = {
+        let it = CanBecomeKeyWindow(
+            contentRect: .init(
+                x: 0,
+                y: 0,
+                width: Style.panelWidth,
+                height: Style.panelHeight
+            ),
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: true
+        )
+        it.isReleasedWhenClosed = false
+        it.isOpaque = false
+        it.backgroundColor = .clear
+        it.collectionBehavior = [.fullScreenAuxiliary, .transient, .canJoinAllSpaces]
+        it.hasShadow = true
+        it.level = widgetLevel(2)
+        it.contentView = NSHostingView(
+            rootView: FixErrorPanelView(
+                store: store.scope(
+                    state: \.fixErrorPanelState,
+                    action: \.fixErrorPanel
+                )
+            ).environment(cursorPositionTracker)
+        )
+        it.canBecomeKeyChecker = { true }
+        it.alphaValue = 0
+        it.setIsVisible(false)
+        return it
+    }()
+    
+    @MainActor
     lazy var chatPanelWindow = {
         let it = ChatPanelWindow(
             store: store.scope(
@@ -1072,6 +1118,7 @@ public final class WidgetWindows {
         toastWindow.orderFrontRegardless()
         sharedPanelWindow.orderFrontRegardless()
         suggestionPanelWindow.orderFrontRegardless()
+        fixErrorPanelWindow.orderFrontRegardless()
         if chatPanelWindow.level.rawValue > NSWindow.Level.normal.rawValue {
             chatPanelWindow.orderFrontRegardless()
         }

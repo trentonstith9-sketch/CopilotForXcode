@@ -278,5 +278,10 @@ public class ConversationTab: ChatTab {
         
         return true
     }
+    
+    public func updateChatTabInfo(_ tabInfo: ChatTabInfo) {
+        // Sync tabInfo for service
+        service.updateChatTabInfo(tabInfo)
+    }
 }
 

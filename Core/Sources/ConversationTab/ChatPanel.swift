@@ -517,7 +517,8 @@ struct ChatPanelInputArea: View {
         @State private var filteredAgent: [ChatAgent] = []
         @State private var showingTemplates = false
         @State private var dropDownShowingType: ShowingType? = nil
-
+        @State private var textEditorState: TextEditorState? = nil
+        
         @AppStorage(\.enableCurrentEditorContext) var enableCurrentEditorContext: Bool
         @State private var isCurrentEditorContextEnabled: Bool = UserDefaults.shared.value(
             for: \.enableCurrentEditorContext
@@ -604,6 +605,11 @@ struct ChatPanelInputArea: View {
                                         submitChatMessage()
                                     }
                                     dropDownShowingType = nil
+                                },
+                                onTextEditorStateChanged: { (state: TextEditorState?) in
+                                    DispatchQueue.main.async {
+                                        textEditorState = state
+                                    }
                                 }
                             )
                             .focused(focusedField, equals: .textField)
@@ -688,8 +694,54 @@ struct ChatPanelInputArea: View {
                     }
                     .keyboardShortcut("l", modifiers: [.command])
                     .accessibilityHidden(true)
+                    
+                    buildReloadContextButtons()
                 }
                 
+            }
+        }
+        
+        private var reloadNextContextButton: some View {
+            Button(action: {
+                chat.send(.reloadNextContext)
+            }) {
+                EmptyView()
+            }
+            .keyboardShortcut(KeyEquivalent.downArrow, modifiers: [])
+            .accessibilityHidden(true)
+        }
+        
+        private var reloadPreviousContextButton: some View {
+            Button(action: {
+                chat.send(.reloadPreviousContext)
+            }) {
+                EmptyView()
+            }
+            .keyboardShortcut(KeyEquivalent.upArrow, modifiers: [])
+            .accessibilityHidden(true)
+        }
+        
+        @ViewBuilder
+        private func buildReloadContextButtons() -> some View {
+            if let textEditorState = textEditorState {
+                switch textEditorState {
+                case .empty, .singleLine:
+                    ZStack {
+                        reloadPreviousContextButton
+                        reloadNextContextButton
+                    }
+                case .multipleLines(let cursorAt):
+                    switch cursorAt {
+                    case .first:
+                        reloadPreviousContextButton
+                    case .last:
+                        reloadNextContextButton
+                    case .middle:
+                        EmptyView()
+                    }
+                }
+            } else {
+                EmptyView()
             }
         }
         
@@ -813,7 +865,7 @@ struct ChatPanelInputArea: View {
             let currentEditorItem: [ConversationFileReference] = [chat.state.currentEditor].compactMap {
                 $0
             }
-            let references = chat.state.conversationAttachedReferences
+            let references = chat.state.attachedReferences
             let chatContextItems: [Any] = buttonItems.map {
                 $0 as ChatContextButtonType
             } + currentEditorItem + references
@@ -932,25 +984,21 @@ struct ChatPanelInputArea: View {
         func chatTemplateCompletion(text: String) async -> [ChatTemplate] {
             guard text.count >= 1 && text.first == "/" else { return [] }
             
-            let prefix = text.dropFirst()
-            var promptTemplates: [ChatTemplate] = []
+            let prefix = String(text.dropFirst()).lowercased()
+            let promptTemplates: [ChatTemplate] = await SharedChatService.shared.loadChatTemplates() ?? []
             let releaseNotesTemplate: ChatTemplate = .init(
                 id: "releaseNotes",
                 description: "What's New",
                 shortDescription: "What's New",
                 scopes: [.chatPanel, .agentPanel]
             )
-            
-            if !chat.isAgentMode {
-                promptTemplates = await SharedChatService.shared.loadChatTemplates() ?? []
-            }
 
             let templates = promptTemplates + [releaseNotesTemplate]
             let skippedTemplates = [ "feedback", "help" ]
             
             return templates.filter {
                 $0.scopes.contains(chat.isAgentMode ? .agentPanel : .chatPanel) &&
-                $0.id.hasPrefix(prefix) &&
+                $0.id.lowercased().hasPrefix(prefix) &&
                 !skippedTemplates.contains($0.id)
             }
         }
@@ -1168,8 +1216,8 @@ struct ChatPanel_InputMultilineText_Preview: PreviewProvider {
         ChatPanel(
             chat: .init(
                 initialState: .init(
-                    typedMessage: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce turpis dolor, malesuada quis fringilla sit amet, placerat at nunc. Suspendisse orci tortor, tempor nec blandit a, malesuada vel tellus. Nunc sed leo ligula. Ut at ligula eget turpis pharetra tristique. Integer luctus leo non elit rhoncus fermentum.",
-
+                    chatContext: .init(
+                        typedMessage: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce turpis dolor, malesuada quis fringilla sit amet, placerat at nunc. Suspendisse orci tortor, tempor nec blandit a, malesuada vel tellus. Nunc sed leo ligula. Ut at ligula eget turpis pharetra tristique. Integer luctus leo non elit rhoncus fermentum."),
                     history: ChatPanel_Preview.history,
                     isReceivingMessage: false
                 ),

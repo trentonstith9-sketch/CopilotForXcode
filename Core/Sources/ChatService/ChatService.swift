@@ -90,7 +90,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
     @Published public internal(set) var isReceivingMessage = false
     @Published public internal(set) var fileEditMap: OrderedDictionary<URL, FileEdit> = [:]
     public internal(set) var requestType: RequestType? = nil
-    public let chatTabInfo: ChatTabInfo
+    public private(set) var chatTabInfo: ChatTabInfo
     private let conversationProvider: ConversationServiceProvider?
     private let conversationProgressHandler: ConversationProgressHandler
     private let conversationContextHandler: ConversationContextHandler = ConversationContextHandlerImpl.shared
@@ -129,6 +129,11 @@ public final class ChatService: ChatServiceType, ObservableObject {
         cancellables.removeAll()
         
         // Memory will be deallocated automatically
+    }
+    
+    public func updateChatTabInfo(_ tabInfo: ChatTabInfo) {
+        // Only isSelected need to be updated
+        chatTabInfo.isSelected = tabInfo.isSelected
     }
     
     private func subscribeToNotifications() {
@@ -643,7 +648,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
         return URL(fileURLWithPath: chatTabInfo.workspacePath)
     }
     
-    private func getProjectRootURL() async throws -> URL? {
+    public func getProjectRootURL() -> URL? {
         guard let workspaceURL = getWorkspaceURL() else { return nil }
         return WorkspaceXcodeWindowInspector.extractProjectURL(
             workspaceURL: workspaceURL, 
@@ -989,8 +994,6 @@ public final class SharedChatService {
     }
     
     public func loadChatTemplates() async -> [ChatTemplate]? {
-        guard self.chatTemplates == nil else { return self.chatTemplates }
-
         do {
             if let templates = (try await conversationProvider?.templates()) {
                 self.chatTemplates = templates
@@ -1163,7 +1166,7 @@ extension ChatService {
             )
             await memory.appendMessage(initialBotMessage)
             
-            guard let projectRootURL = try await getProjectRootURL()
+            guard let projectRootURL = getProjectRootURL()
             else {
                 let round = CodeReviewRound.fromError(turnId: turnId, error: "Invalid git repository.")
                 await appendCodeReviewRound(round)

@@ -454,28 +454,16 @@ struct ChatTabContainer: View {
         selectedTabId: String
     ) -> some View {
         GeometryReader { geometry in
-            ZStack {
-                ForEach(tabInfoArray) { tabInfo in
-                    if let tab = chatTabPool.getTab(of: tabInfo.id) {
-                        let isActive = tab.id == selectedTabId
-                        
-                        if isActive {
-                            // Only render the active tab with full layout
-                            tab.body
-                                .frame(
-                                    width: geometry.size.width,
-                                    height: geometry.size.height
-                                )
-                        } else {
-                            // Render inactive tabs with minimal footprint to avoid layout conflicts
-                            tab.body
-                                .frame(width: 1, height: 1)
-                                .opacity(0)
-                                .allowsHitTesting(false)
-                                .clipped()
-                        }
-                    }
-                }
+            if tabInfoArray[id: selectedTabId] != nil,
+               let tab = chatTabPool.getTab(of: selectedTabId) {
+                tab.body
+                    .frame(
+                        width: geometry.size.width,
+                        height: geometry.size.height
+                    )
+            } else {
+                // Fallback if selected tab is not found
+                EmptyView()
             }
         }
     }

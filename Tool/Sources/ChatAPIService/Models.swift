@@ -61,7 +61,7 @@ public struct ConversationReference: Codable, Equatable, Hashable {
         uri: String,
         status: Status?,
         kind: Kind,
-        referenceType: ReferenceType
+        referenceType: ReferenceType = .file
     ) {
         self.uri = uri
         self.status = status

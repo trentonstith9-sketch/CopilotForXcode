@@ -36,27 +36,27 @@ public class CurrentEditorSkill: ConversationSkill {
     
     public func resolveSkill(request: ConversationContextRequest, completion: JSONRPCResponseHandler){
         let uri: String? = self.currentFile.url.absoluteString
-        var selection: JSONValue?
+        let response: JSONValue
         
         if let fileSelection = currentFile.selection {
             let start = fileSelection.start
             let end = fileSelection.end
-            selection = .hash([
-                "start": .hash(["line": .number(Double(start.line)), "character": .number(Double(start.character))]),
-                "end": .hash(["line": .number(Double(end.line)), "character": .number(Double(end.character))])
+            response = .hash([
+                "uri": .string(uri ?? ""),
+                "selection": .hash([
+                    "start": .hash(["line": .number(Double(start.line)), "character": .number(Double(start.character))]),
+                    "end": .hash(["line": .number(Double(end.line)), "character": .number(Double(end.character))])
+                ])
             ])
+        } else {
+            // No text selection - only include file URI without selection metadata
+            response = .hash(["uri": .string(uri ?? "")])
         }
         
         completion(
             AnyJSONRPCResponse(
                 id: request.id,
-                result: JSONValue.array([
-                    JSONValue.hash([
-                        "uri" : .string(uri ?? ""),
-                        "selection": selection ?? .null
-                    ]),
-                    JSONValue.null
-                ]))
+                result: JSONValue.array([response, JSONValue.null]))
         )
     }
 }
