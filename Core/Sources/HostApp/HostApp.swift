@@ -27,13 +27,13 @@ public enum TabIndex: Int, CaseIterable {
         case .general: return "CopilotLogo"
         case .advanced: return "gearshape.2.fill"
         case .mcp: return "wrench.and.screwdriver.fill"
-        case .byok: return "cube"
+        case .byok: return "Model"
         }
     }
     
     var isSystemImage: Bool {
         switch self {
-        case .general: return false
+        case .general, .byok: return false
         default: return true
         }
     }

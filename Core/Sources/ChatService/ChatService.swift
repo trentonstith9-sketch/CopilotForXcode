@@ -561,7 +561,7 @@ public final class ChatService: ChatServiceType, ObservableObject {
                 skillSet: skillSet,
                 references: lastUserRequest.references ?? [],
                 model: model != nil ? model : lastUserRequest.model,
-                modelProviderName: modelProviderName != nil ? modelProviderName : lastUserRequest.modelProviderName,
+                modelProviderName: modelProviderName,
                 agentMode: lastUserRequest.agentMode,
                 userLanguage: lastUserRequest.userLanguage,
                 turnId: id
@@ -793,7 +793,11 @@ public final class ChatService: ChatServiceType, ObservableObject {
                         }
                         do {
                             CopilotModelManager.switchToFallbackModel()
-                            try await resendMessage(id: progress.turnId, model: fallbackModel.id)
+                            try await resendMessage(
+                                id: progress.turnId,
+                                model: fallbackModel.id,
+                                modelProviderName: nil
+                            )
                         } catch {
                             Logger.gitHubCopilot.error(error)
                             resetOngoingRequest()

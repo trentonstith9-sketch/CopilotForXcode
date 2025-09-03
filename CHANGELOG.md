@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.42.0 - September 3, 2025
+### Added
+- Support for Bring Your Own Keys (BYOK) with model providers including Azure, OpenAI, Anthropic, Gemini, Groq, and OpenRouter. See [BYOK.md](https://github.com/github/CopilotForXcode/blob/0.42.0/Docs/BYOK.md).
+- Use the current selection as chat context.
+- Add folders as chat context.
+- Shortcut to quickly fix errors in Xcode.
+- Support for custom instruction files at `.github/instructions/*.instructions.md`. See [CustomInstructions.md](https://github.com/github/CopilotForXcode/blob/0.42.0/Docs/CustomInstructions.md).
+- Support for prompt files at `.github/prompts/*.prompt.md`. See [PromptFiles.md](https://github.com/github/CopilotForXcode/blob/0.42.0/Docs/PromptFiles.md).
+- Use ↑/↓ keys to reuse previous chat context in the chat view.
+
+### Changed
+- Default chat mode is now set to “Agent”.
+
+### Fixed
+- Cannot copy url from Safari browser to chat view.
+
 ## 0.41.0 - August 14, 2025
 ### Added
 - Code review feature.

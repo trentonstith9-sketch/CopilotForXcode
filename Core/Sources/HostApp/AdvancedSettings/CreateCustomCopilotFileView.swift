@@ -96,7 +96,7 @@ struct CreateCustomCopilotFileView: View {
             if fileAlreadyExists && !trimmedFileName.isEmpty {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(.red)
-                Text("'.github/\(promptType.directoryName)/\(trimmedFileName).\(promptType.fileExtension)' already exists")
+                Text("'.github/\(promptType.directoryName)/\(trimmedFileName)\(promptType.fileExtension)' already exists")
                     .font(.caption)
                     .foregroundColor(.red)
                     .lineLimit(2)
@@ -110,7 +110,7 @@ struct CreateCustomCopilotFileView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
-                Text(".github/\(promptType.directoryName)/\(trimmedFileName).\(promptType.fileExtension)")
+                Text(".github/\(promptType.directoryName)/\(trimmedFileName)\(promptType.fileExtension)")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
@@ -165,7 +165,7 @@ struct CreateCustomCopilotFileView: View {
         if FileManager.default.fileExists(atPath: filePath.path) {
             await MainActor.run {
                 self.fileAlreadyExists = true
-                toast("\(promptType.displayName) '\(trimmedFileName).\(promptType.fileExtension)' already exists", .warning)
+                toast("\(promptType.displayName) '\(trimmedFileName)\(promptType.fileExtension)' already exists", .warning)
             }
             return
         }
@@ -179,7 +179,7 @@ struct CreateCustomCopilotFileView: View {
             try promptType.defaultTemplate.write(to: filePath, atomically: true, encoding: .utf8)
 
             await MainActor.run {
-                toast("Created \(promptType.rawValue) file '\(trimmedFileName).\(promptType.fileExtension)'", .info)
+                toast("Created \(promptType.rawValue) file '\(trimmedFileName)\(promptType.fileExtension)'", .info)
                 NSWorkspace.shared.open(filePath)
                 self.isOpen.wrappedValue = false
             }

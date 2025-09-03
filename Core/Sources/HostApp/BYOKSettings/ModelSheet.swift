@@ -150,6 +150,11 @@ struct ModelSheet: View {
                         vision: supportVision
                     )
                 )
+                
+                if let originalModel = existingModel, trimmedModelId != originalModel.modelId {
+                    // Delete existing model if the model ID has changed
+                    try await dataManager.deleteModel(originalModel)
+                }
 
                 try await dataManager.saveModel(modelParams)
                 dismiss()

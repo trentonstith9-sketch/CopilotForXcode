@@ -56,7 +56,7 @@ public enum PromptType: String, CaseIterable, Equatable {
         case .instructions:
             return "Configure `.github/instructions/*.instructions.md` files scoped to specific file patterns or tasks."
         case .prompt:
-            return "Configure `.github/prompts/*.prompt.md` files for reusable prompt templates."
+            return "Configure `.github/prompts/*.prompt.md` files for reusable prompts. Trigger with '/' commands in the Chat view."
         }
     }
     
@@ -74,7 +74,7 @@ public enum PromptType: String, CaseIterable, Equatable {
         case .prompt:
             return """
             ---
-            description: Tool Description
+            description: Prompt Description
             ---
             Define the task to achieve, including specific requirements, constraints, and success criteria.
 

@@ -22,6 +22,11 @@ public class AppInstanceInspector: ObservableObject {
         guard !runningApplication.isTerminated else { return false }
         return runningApplication.isXcode
     }
+    
+    public var isCopilotForXcodeExtensionService: Bool {
+        guard !runningApplication.isTerminated else { return false }
+        return runningApplication.isCopilotForXcodeExtensionService
+    }
 
     public var isExtensionService: Bool {
         guard !runningApplication.isTerminated else { return false }

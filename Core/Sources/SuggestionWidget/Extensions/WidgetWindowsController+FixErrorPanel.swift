@@ -38,7 +38,7 @@ extension WidgetWindowsController {
     @MainActor
     func updateFixErrorPanelWindowLocation() async {
         guard let activeApp = await XcodeInspector.shared.safe.activeApplication,
-              activeApp.isXcode
+              (activeApp.isXcode || activeApp.isCopilotForXcodeExtensionService)
         else {
             hideFixErrorWindow()
             return
